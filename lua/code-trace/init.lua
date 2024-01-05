@@ -7,6 +7,11 @@ FooHandler.post: return foo_service.a()
         bar_service.b: return baz_service.c()
             baz_service.c: return 0
 
+-- vim.treesitter.get_node_text(require("nvim-treesitter.ts_utils").get_node_at_cursor():parent(), 0)
+-- vim.treesitter.get_node_text(require("nvim-treesitter.ts_utils").get_node_at_cursor(), 0)
+-- require("nvim-treesitter.ts_utils").get_node_at_cursor():type()
+
+-- vim.treesitter.get_node_text(require("nvim-treesitter.ts_utils").get_node_at_cursor(), 0)
 --]=====]
 
 local utils = require('code-trace.windows')
@@ -18,19 +23,31 @@ M.setup = function(opts)
   opts = opts or {}
 end
 
-M.add_stop_one = function()
-  --local fp = vim.fn.expand("%p")
-  local path = vim.fn["nvim_treesitter#statusline"](opts)
-  local line = vim.fn.getline("."):gsub("^%s*(.-)%s*$", "%1")
-  local entry = ""
-  if (path == "") then
-    entry = line
-  elseif (path:find(line, 1, true)) then
-    entry = path
-  else
-    entry = path .. " -> " .. line
+local function _find_parent_node_with_type(node, t)
+  while node do
+    if node:type() == t then
+      break
+    end
+    node = node:parent()
   end
-  table.insert(M.stops, entry)
+
+  if node then
+    return vim.treesitter.get_node_text(node:child(1), 0)
+  end
+  return ""
+end
+
+local function _pre_fill_parents(node)
+  local func = _find_parent_node_with_type(node, "function_definition")
+  local class = _find_parent_node_with_type(node, "class_definition")
+
+  if class then
+    table.insert(M.stops, class)
+  end
+
+  if func then
+    table.insert(M.stops, func)
+  end
 end
 
 M.add_stop = function(opts)
@@ -38,14 +55,26 @@ M.add_stop = function(opts)
   if (opts.return_stop == true) then
     table.insert(M.stops, "return")
   else
-    -- vim.treesitter.get_node_text(require("nvim-treesitter.ts_utils").get_node_at_cursor():parent(), 0)
-    -- vim.treesitter.get_node_text(require("nvim-treesitter.ts_utils").get_node_at_cursor(), 0)
-    -- require("nvim-treesitter.ts_utils").get_node_at_cursor():type()
     local ts_utils = require("nvim-treesitter.ts_utils")
     local node = ts_utils.get_node_at_cursor()
-    local entry = vim.treesitter.get_node_text(node, 0)
-    table.insert(M.stops, entry)
-    --vim.cmd("echo '" .. entry .. "'")
+
+    if next(M.stops) == nil then
+      _pre_fill_parents(node)
+    end
+
+    local prev_sibling = node:prev_sibling()
+    local entry
+    if (prev_sibling) then
+      local prev_sib_text = vim.treesitter.get_node_text(prev_sibling, 0)
+      if (prev_sib_text == ".") then
+        local parent_node = node:parent()
+        entry = vim.treesitter.get_node_text(parent_node, 0)
+      end
+    end
+    if (entry == nil) then
+      entry = vim.treesitter.get_node_text(node, 0)
+    end
+    table.insert(M.stops, entry:match("[^\n]*"))
   end
 end
 
@@ -59,28 +88,10 @@ M.show_stops = function()
 end
 
 M.print = function(s)
-  vim.cmd("echo '" .. tostring(s) .. "'")
+  vim.cmd("echo '" .. tostring(s):match("[^\n]*") .. "'")
 end
 
 M.debug_stop = function()
-  -- vim.treesitter.get_node_text(require("nvim-treesitter.ts_utils").get_node_at_cursor(), 0)
-  local ts_utils = require("nvim-treesitter.ts_utils")
-  local node = ts_utils.get_node_at_cursor()
-
-  local prev_sibling = node:prev_sibling()
-  local node_text
-  if (prev_sibling) then
-    local prev_sib_text = vim.treesitter.get_node_text(prev_sibling, 0)
-    if (prev_sib_text == ".") then
-      local parent_node = node:parent()
-      node_text = vim.treesitter.get_node_text(parent_node, 0):match("[^\n]*")
-    end
-  end
-  if (node_text == nil) then
-    node_text = vim.treesitter.get_node_text(node, 0)
-  end
-
-  M.print("node_text: " .. node_text .. ", node type: " .. node:type())
 end
 
 return M

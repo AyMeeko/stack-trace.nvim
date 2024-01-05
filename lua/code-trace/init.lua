@@ -54,6 +54,9 @@ M.add_stop = function(opts)
   opts = opts or {}
   if (opts.return_stop == true) then
     table.insert(M.stops, "return")
+    if (vim.fn.tabpagenr() > 1) then
+      vim.cmd.tabclose()
+    end
   else
     local ts_utils = require("nvim-treesitter.ts_utils")
     local node = ts_utils.get_node_at_cursor()
@@ -75,6 +78,7 @@ M.add_stop = function(opts)
       entry = vim.treesitter.get_node_text(node, 0)
     end
     table.insert(M.stops, entry:match("[^\n]*"))
+    vim.lsp.buf.definition()
   end
 end
 
@@ -84,6 +88,7 @@ end
 
 M.show_stops = function()
   utils.open_window()
+  M.set_mappings()
   utils.update_view(M.stops)
 end
 
@@ -91,7 +96,14 @@ M.print = function(s)
   vim.cmd("echo '" .. tostring(s):match("[^\n]*") .. "'")
 end
 
-M.debug_stop = function()
+M.close_window = utils.close_window
+
+M.set_mappings = function()
+  vim.api.nvim_buf_set_keymap(0, "n", "q", "<cmd>lua require('code-trace').close_window()<CR>", {
+    nowait = true, noremap = true, silent = true
+  })
+
+  vim.api.nvim_buf_set_keymap(0, "n", "w", ":w ", {nowait = true, noremap = true})
 end
 
 return M

@@ -79,4 +79,8 @@ M.update_view = function(stops)
   vim.api.nvim_buf_set_lines(M.buf, 0, -1, false, formatted_stops)
 end
 
+M.close_window = function()
+  vim.api.nvim_win_close(M.win, true)
+end
+
 return M

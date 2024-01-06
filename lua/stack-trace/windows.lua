@@ -14,7 +14,7 @@ M.open_window = function()
   local border_buf = vim.api.nvim_create_buf(false, true)
 
   vim.api.nvim_buf_set_option(M.buf, 'bufhidden', 'wipe')
-  vim.api.nvim_buf_set_option(M.buf, 'filetype', 'code_trace')
+  vim.api.nvim_buf_set_option(M.buf, 'filetype', 'stack_trace')
 
   local width = vim.api.nvim_get_option("columns")
   local height = vim.api.nvim_get_option("lines")
@@ -68,7 +68,7 @@ M.update_view = function(stops)
   local padding = ""
 
   for k,v in pairs(stops) do
-    if (v == "return") then
+    if (v == "stacktracereturnstacktrace") then
       padding = padding:sub(1, -3)
     else
       table.insert(formatted_stops, padding .. v)
